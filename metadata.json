@@ -1,0 +1,6 @@
+{
+  "name": "AI Security Compliance Standards Documentation",
+  "description": "Comprehensive documentation repository and interactive compliance portal for ISO/IEC 42001, OWASP Top 10 for LLM, IRGC Risk Governance, SANS Incident Response, and NIST AI RMF.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
