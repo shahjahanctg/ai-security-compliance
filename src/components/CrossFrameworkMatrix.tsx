@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Search, Copy, Check, Table2, Info } from 'lucide-react';
 import { CROSS_FRAMEWORK_MAPPINGS } from '../data/standardsData';
+import { ExportMenu } from './ExportMenu';
+import { exportToExcel, exportToCsv, exportToPdf } from '../utils/exportUtils';
 
 export function CrossFrameworkMatrix() {
   const [filter, setFilter] = useState('');
@@ -20,7 +22,29 @@ export function CrossFrameworkMatrix() {
     );
   });
 
-  const handleCopyMarkdownTable = async () => {
+  const getMatrixData = () => {
+    const headers = [
+      'Security / Risk Domain',
+      'ISO/IEC 42001',
+      'OWASP Top 10 LLM',
+      'NIST AI RMF 1.0',
+      'IRGC Framework',
+      'SANS AI IR & CTI',
+      'Recommended Architecture & Action',
+    ];
+    const rows = filtered.map((row) => [
+      row.domain,
+      row.iso42001,
+      row.owaspLLM,
+      row.nistAiRmf,
+      row.irgcPhase,
+      row.sansIrPhase,
+      row.recommendedAction,
+    ]);
+    return { headers, rows };
+  };
+
+  const handleCopyTable = async () => {
     let md = '| Security & Governance Domain | ISO/IEC 42001 | OWASP Top 10 LLM | NIST AI RMF 1.0 | IRGC Framework | SANS AI IR & CTI | Recommended Architecture & Action |\n';
     md += '|:---|:---|:---|:---|:---|:---|:---|\n';
     CROSS_FRAMEWORK_MAPPINGS.forEach((row) => {
@@ -29,6 +53,38 @@ export function CrossFrameworkMatrix() {
     await navigator.clipboard.writeText(md);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleExportExcel = () => {
+    const { headers, rows } = getMatrixData();
+    exportToExcel('Cross_Framework_Compliance_Matrix.xlsx', [
+      {
+        sheetName: 'Harmonized Matrix',
+        headers,
+        rows,
+      },
+    ]);
+  };
+
+  const handleExportCsv = () => {
+    const { headers, rows } = getMatrixData();
+    exportToCsv('Cross_Framework_Compliance_Matrix.csv', headers, rows);
+  };
+
+  const handleExportPdf = () => {
+    const { headers, rows } = getMatrixData();
+    exportToPdf(
+      'Cross_Framework_Compliance_Matrix.pdf',
+      'MULTI-STANDARD CROSS-FRAMEWORK COMPLIANCE MATRIX',
+      'Harmonized Control Mapping across ISO/IEC 42001, OWASP Top 10 for LLM, NIST AI RMF 1.0, IRGC, and SANS AI IR.',
+      [
+        {
+          title: `Harmonized Governance & Security Mapping (${filtered.length} Domains)`,
+          headers,
+          rows,
+        },
+      ]
+    );
   };
 
   return (
@@ -47,7 +103,7 @@ export function CrossFrameworkMatrix() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative w-full sm:w-60">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
@@ -60,12 +116,21 @@ export function CrossFrameworkMatrix() {
           </div>
 
           <button
-            onClick={handleCopyMarkdownTable}
+            onClick={handleCopyTable}
             className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 active:scale-95"
           >
             {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-slate-500" />}
             <span>{copied ? 'Copied Table' : 'Copy Table'}</span>
           </button>
+
+          <ExportMenu
+            onExportExcel={handleExportExcel}
+            onExportCsv={handleExportCsv}
+            onExportPdf={handleExportPdf}
+            buttonLabel="Export Matrix"
+            variant="primary"
+            idPrefix="matrix-export"
+          />
         </div>
       </div>
 

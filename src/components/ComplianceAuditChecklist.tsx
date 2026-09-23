@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { CheckCircle2, Clock, AlertCircle, Download, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, RotateCcw } from 'lucide-react';
 import { StandardMeta, ControlItem } from '../types';
+import { ExportMenu } from './ExportMenu';
+import { exportToExcel, exportToCsv, exportToPdf } from '../utils/exportUtils';
 
 interface ComplianceAuditChecklistProps {
   meta: StandardMeta;
@@ -38,32 +40,72 @@ export function ComplianceAuditChecklist({ meta, controls }: ComplianceAuditChec
     setStatuses(fresh);
   };
 
-  const handleExportAuditReport = () => {
-    let report = `# Compliance Audit Readiness Report: ${meta.code}\n`;
-    report += `**Generated:** ${new Date().toISOString()}\n`;
-    report += `**Standard:** ${meta.name} (${meta.code})\n`;
-    report += `**Readiness Score:** ${readinessPercent}% (${compliantCount}/${total} Compliant, ${inProgressCount} In Progress, ${notStartedCount} Gaps)\n\n`;
-    report += `| Control / Clause ID | Title | Status | Primary Requirement |\n`;
-    report += `|:---|:---|:---|:---|\n`;
-    controls.forEach((c) => {
+  const getAuditTableData = () => {
+    const headers = ['Clause / ID', 'Title', 'Compliance Status', 'Primary Requirement', 'Scope Category'];
+    const rows = controls.map((c) => {
       const statusLabel =
         statuses[c.id] === 'compliant'
           ? 'COMPLIANT'
           : statuses[c.id] === 'in_progress'
           ? 'IN PROGRESS'
           : 'GAP / NOT STARTED';
-      report += `| ${c.clauseOrRiskId} | ${c.title} | ${statusLabel} | ${c.technicalRequirements[0] || c.description} |\n`;
+      return [
+        c.clauseOrRiskId,
+        c.title,
+        statusLabel,
+        c.technicalRequirements[0] || c.description,
+        c.category,
+      ];
     });
+    return { headers, rows };
+  };
 
-    const blob = new Blob([report], { type: 'text/markdown;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${meta.id}_compliance_audit_report.md`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const handleExportExcel = () => {
+    const { headers, rows } = getAuditTableData();
+    const summaryHeaders = ['Metric', 'Value'];
+    const summaryRows = [
+      ['Standard', `${meta.name} (${meta.code})`],
+      ['Total Controls Audited', total],
+      ['Compliant Items', compliantCount],
+      ['In Progress Items', inProgressCount],
+      ['Compliance Gaps', notStartedCount],
+      ['Overall Readiness Score', `${readinessPercent}%`],
+      ['Audit Timestamp', new Date().toISOString()],
+    ];
+
+    exportToExcel(`${meta.code.replace(/[^a-zA-Z0-9_-]/g, '_')}_Audit_Report.xlsx`, [
+      {
+        sheetName: 'Audit Summary',
+        headers: summaryHeaders,
+        rows: summaryRows,
+      },
+      {
+        sheetName: 'Controls Checklist',
+        headers,
+        rows,
+      },
+    ]);
+  };
+
+  const handleExportCsv = () => {
+    const { headers, rows } = getAuditTableData();
+    exportToCsv(`${meta.code.replace(/[^a-zA-Z0-9_-]/g, '_')}_Audit_Report.csv`, headers, rows);
+  };
+
+  const handleExportPdf = () => {
+    const { headers, rows } = getAuditTableData();
+    exportToPdf(
+      `${meta.code.replace(/[^a-zA-Z0-9_-]/g, '_')}_Audit_Report.pdf`,
+      `COMPLIANCE AUDIT READINESS REPORT: ${meta.code}`,
+      `Readiness Score: ${readinessPercent}% | Compliant: ${compliantCount}/${total} | In Progress: ${inProgressCount} | Gaps: ${notStartedCount}`,
+      [
+        {
+          title: `Audit Evaluation Checklist (${total} Controls)`,
+          headers,
+          rows,
+        },
+      ]
+    );
   };
 
   return (
@@ -88,13 +130,14 @@ export function ComplianceAuditChecklist({ meta, controls }: ComplianceAuditChec
               <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
               <span>Reset</span>
             </button>
-            <button
-              onClick={handleExportAuditReport}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 active:scale-95"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span>Export Audit Report (.md)</span>
-            </button>
+            <ExportMenu
+              onExportExcel={handleExportExcel}
+              onExportCsv={handleExportCsv}
+              onExportPdf={handleExportPdf}
+              buttonLabel="Export Audit Report"
+              variant="primary"
+              idPrefix={`audit-checklist-export-${meta.id}`}
+            />
           </div>
         </div>
 

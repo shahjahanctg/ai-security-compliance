@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   Copy,
-  Download,
   Check,
   Table as TableIcon,
   Code2,
@@ -10,6 +9,8 @@ import {
 } from 'lucide-react';
 import { StandardMeta } from '../types';
 import { TABULAR_STANDARDS_DATA, StandardTableDoc } from '../data/tabularStandardsData';
+import { ExportMenu } from './ExportMenu';
+import { exportToExcel, exportToCsv, exportToPdf } from '../utils/exportUtils';
 
 interface MarkdownViewerProps {
   meta: StandardMeta;
@@ -22,11 +23,11 @@ export function MarkdownViewer({ meta }: MarkdownViewerProps) {
 
   const tableData: StandardTableDoc = TABULAR_STANDARDS_DATA[meta.id];
 
-  // Helper to generate pure Markdown Table string
+  // Helper to generate formatted text
   const generateMarkdownTableText = (): string => {
     if (!tableData) return '';
     let md = `# ${tableData.standardName}\n`;
-    md += `## Structural Compliance & Technical Controls Specification (Table Format)\n\n`;
+    md += `## Structural Compliance & Technical Controls Specification\n\n`;
     md += `**Standard Identifier:** ${tableData.code}  \n`;
     md += `**Documentation Format:** Structured Technical Verification Tables  \n`;
     md += `**Generated:** ${new Date().toISOString().split('T')[0]}  \n\n`;
@@ -49,22 +50,52 @@ export function MarkdownViewer({ meta }: MarkdownViewerProps) {
 
   const fullMarkdownTableText = generateMarkdownTableText();
 
-  const handleCopyMarkdown = async () => {
+  const handleCopyText = async () => {
     await navigator.clipboard.writeText(fullMarkdownTableText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownloadTableMd = () => {
-    const blob = new Blob([fullMarkdownTableText], { type: 'text/markdown;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${meta.id}_structural_tables.md`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const handleExportExcel = () => {
+    if (!tableData) return;
+    const sheets = tableData.sections.map((sec, idx) => ({
+      sheetName: sec.title.substring(0, 31).replace(/[:\\/?*[\]]/g, '_') || `Section_${idx + 1}`,
+      headers: sec.headers,
+      rows: sec.rows,
+    }));
+
+    exportToExcel(`${meta.code.replace(/[^a-zA-Z0-9_-]/g, '_')}_Structural_Tables.xlsx`, sheets);
+  };
+
+  const handleExportCsv = () => {
+    if (!tableData) return;
+    // Combine all sections with a Section column for standard CSV
+    const allHeaders = ['Section', ...tableData.sections[0].headers];
+    const allRows: (string | number)[][] = [];
+
+    tableData.sections.forEach((sec) => {
+      sec.rows.forEach((row) => {
+        allRows.push([sec.title, ...row]);
+      });
+    });
+
+    exportToCsv(`${meta.code.replace(/[^a-zA-Z0-9_-]/g, '_')}_Structural_Tables.csv`, allHeaders, allRows);
+  };
+
+  const handleExportPdf = () => {
+    if (!tableData) return;
+    const sections = tableData.sections.map((sec) => ({
+      title: sec.title,
+      headers: sec.headers,
+      rows: sec.rows,
+    }));
+
+    exportToPdf(
+      `${meta.code.replace(/[^a-zA-Z0-9_-]/g, '_')}_Structural_Tables.pdf`,
+      tableData.standardName.toUpperCase(),
+      `Formal Structural Compliance Tables (${tableData.code})`,
+      sections
+    );
   };
 
   const totalSections = tableData?.sections.length || 0;
@@ -111,7 +142,7 @@ export function MarkdownViewer({ meta }: MarkdownViewerProps) {
               />
             </div>
 
-            {/* Toggle Table View vs Source Markdown */}
+            {/* Toggle Table View vs Source */}
             <button
               id="btn-toggle-table-source"
               onClick={() => setViewSource(!viewSource)}
@@ -125,39 +156,39 @@ export function MarkdownViewer({ meta }: MarkdownViewerProps) {
               ) : (
                 <>
                   <Code2 className="h-3.5 w-3.5 text-slate-600" />
-                  <span>Markdown Source</span>
+                  <span>Raw Text View</span>
                 </>
               )}
             </button>
 
-            {/* Copy Table as Markdown */}
+            {/* Copy Table Text */}
             <button
-              id="btn-copy-table-md"
-              onClick={handleCopyMarkdown}
+              id="btn-copy-table-text"
+              onClick={handleCopyText}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 active:scale-95"
             >
               {copied ? (
                 <>
                   <Check className="h-3.5 w-3.5 text-emerald-600" />
-                  <span className="text-emerald-700 font-semibold">Copied Table!</span>
+                  <span className="text-emerald-700 font-semibold">Copied!</span>
                 </>
               ) : (
                 <>
                   <Copy className="h-3.5 w-3.5 text-slate-500" />
-                  <span>Copy Markdown Table</span>
+                  <span>Copy Table</span>
                 </>
               )}
             </button>
 
-            {/* Download Table .md */}
-            <button
-              id="btn-download-table-md"
-              onClick={handleDownloadTableMd}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 active:scale-95"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span>Download Table (.md)</span>
-            </button>
+            {/* Export Menu: Excel, CSV, PDF */}
+            <ExportMenu
+              onExportExcel={handleExportExcel}
+              onExportCsv={handleExportCsv}
+              onExportPdf={handleExportPdf}
+              buttonLabel="Export Tables"
+              variant="primary"
+              idPrefix={`tables-export-${meta.id}`}
+            />
           </div>
         </div>
       </div>
@@ -167,7 +198,7 @@ export function MarkdownViewer({ meta }: MarkdownViewerProps) {
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
           <div className="mb-3 flex items-center justify-between border-b border-slate-200 pb-3">
             <span className="text-xs font-mono text-slate-500">
-              Raw Table Markdown Output ({fullMarkdownTableText.split('\n').length} lines)
+              Raw Structured Table Output ({fullMarkdownTableText.split('\n').length} lines)
             </span>
             <span className="text-xs font-medium text-slate-400">Format: Standard GFM Pipe Tables</span>
           </div>

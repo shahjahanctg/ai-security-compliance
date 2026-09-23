@@ -1,5 +1,7 @@
 export type StandardId = 'iso-42001' | 'owasp-llm' | 'irgc-governance' | 'sans-ir' | 'nist-ai-rmf';
 
+export type ActiveTab = 'controls' | 'markdown' | 'matrix' | 'checklist' | 'glossary';
+
 export interface StandardMeta {
   id: StandardId;
   code: string;

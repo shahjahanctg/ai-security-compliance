@@ -1,12 +1,12 @@
-import { Shield, Search, FileText, CheckSquare, Layers, BookOpen } from 'lucide-react';
+import { Shield, Search, FileSpreadsheet, CheckSquare, Layers, BookOpen, Bookmark } from 'lucide-react';
 import { StandardId } from '../types';
 import { STANDARDS_META } from '../data/standardsData';
 
 interface HeaderProps {
   activeStandard: StandardId;
   onSelectStandard: (id: StandardId) => void;
-  activeTab: 'controls' | 'markdown' | 'matrix' | 'checklist';
-  onSelectTab: (tab: 'controls' | 'markdown' | 'matrix' | 'checklist') => void;
+  activeTab: 'controls' | 'markdown' | 'matrix' | 'checklist' | 'glossary';
+  onSelectTab: (tab: 'controls' | 'markdown' | 'matrix' | 'checklist' | 'glossary') => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
@@ -69,12 +69,17 @@ export function Header({
         <div className="mt-3.5 flex flex-wrap items-center gap-1.5 overflow-x-auto pb-1 text-xs">
           {standardsList.map((id) => {
             const meta = STANDARDS_META[id];
-            const isSelected = activeStandard === id;
+            const isSelected = activeStandard === id && activeTab !== 'glossary';
             return (
               <button
                 key={id}
                 id={`btn-nav-standard-${id}`}
-                onClick={() => onSelectStandard(id)}
+                onClick={() => {
+                  onSelectStandard(id);
+                  if (activeTab === 'glossary') {
+                    onSelectTab('controls');
+                  }
+                }}
                 className={`flex items-center whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                   isSelected
                     ? 'bg-slate-900 text-white shadow-xs'
@@ -111,7 +116,7 @@ export function Header({
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
-            <FileText className="h-3.5 w-3.5" />
+            <FileSpreadsheet className="h-3.5 w-3.5" />
             <span>Table Structural Documentation</span>
           </button>
 
@@ -139,6 +144,19 @@ export function Header({
           >
             <CheckSquare className="h-3.5 w-3.5" />
             <span>Audit Readiness Checklist</span>
+          </button>
+
+          <button
+            id="tab-glossary-section"
+            onClick={() => onSelectTab('glossary')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors ${
+              activeTab === 'glossary'
+                ? 'bg-slate-900 text-white font-semibold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <Bookmark className="h-3.5 w-3.5" />
+            <span>AI Security Glossary</span>
           </button>
         </div>
       </div>
